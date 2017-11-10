@@ -36,6 +36,7 @@ use visit::Visitor;
 use std::collections::HashMap;
 use std::mem;
 use std::rc::Rc;
+use std::sync::Arc;
 
 macro_rules! expansions {
     ($($kind:ident: $ty:ty [$($vec:ident, $ty_elt:ty)*], $kind_name:expr, .$make:ident,
@@ -420,7 +421,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         }
     }
 
-    fn expand_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
+    fn expand_invoc(&mut self, invoc: Invocation, ext: Arc<SyntaxExtension>) -> Expansion {
         let result = match invoc.kind {
             InvocationKind::Bang { .. } => self.expand_bang_invoc(invoc, ext),
             InvocationKind::Attr { .. } => self.expand_attr_invoc(invoc, ext),
@@ -444,7 +445,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         result
     }
 
-    fn expand_attr_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
+    fn expand_attr_invoc(&mut self, invoc: Invocation, ext: Arc<SyntaxExtension>) -> Expansion {
         let Invocation { expansion_kind: kind, .. } = invoc;
         let (attr, item) = match invoc.kind {
             InvocationKind::Attr { attr, item, .. } => (attr.unwrap(), item),
@@ -499,7 +500,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     /// Expand a macro invocation. Returns the result of expansion.
-    fn expand_bang_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
+    fn expand_bang_invoc(&mut self, invoc: Invocation, ext: Arc<SyntaxExtension>) -> Expansion {
         let (mark, kind) = (invoc.expansion_data.mark, invoc.expansion_kind);
         let (mac, ident, span) = match invoc.kind {
             InvocationKind::Bang { mac, ident, span } => (mac, ident, span),
@@ -625,7 +626,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
     }
 
     /// Expand a derive invocation. Returns the result of expansion.
-    fn expand_derive_invoc(&mut self, invoc: Invocation, ext: Rc<SyntaxExtension>) -> Expansion {
+    fn expand_derive_invoc(&mut self, invoc: Invocation, ext: Arc<SyntaxExtension>) -> Expansion {
         let Invocation { expansion_kind: kind, .. } = invoc;
         let (path, item) = match invoc.kind {
             InvocationKind::Derive { path, item } => (path, item),

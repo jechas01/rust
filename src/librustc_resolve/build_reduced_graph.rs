@@ -27,7 +27,7 @@ use rustc::hir::def_id::{BUILTIN_MACROS_CRATE, CRATE_DEF_INDEX, LOCAL_CRATE, Def
 use rustc::ty;
 
 use std::cell::Cell;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use syntax::ast::{Name, Ident};
 use syntax::attr;
@@ -565,7 +565,7 @@ impl<'a> Resolver<'a> {
         }
     }
 
-    pub fn get_macro(&mut self, def: Def) -> Rc<SyntaxExtension> {
+    pub fn get_macro(&mut self, def: Def) -> Arc<SyntaxExtension> {
         let def_id = match def {
             Def::Macro(def_id, ..) => def_id,
             _ => panic!("Expected Def::Macro(..)"),
@@ -579,7 +579,7 @@ impl<'a> Resolver<'a> {
             LoadedMacro::ProcMacro(ext) => return ext,
         };
 
-        let ext = Rc::new(macro_rules::compile(&self.session.parse_sess,
+        let ext = Arc::new(macro_rules::compile(&self.session.parse_sess,
                                                &self.session.features,
                                                &macro_def));
         self.macro_map.insert(def_id, ext.clone());

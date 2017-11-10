@@ -99,7 +99,7 @@ use rustc::ty::wf;
 
 use std::mem;
 use std::ops::Deref;
-use std::rc::Rc;
+use std::sync::Arc;
 use syntax::ast;
 use syntax_pos::Span;
 use rustc::hir::intravisit::{self, Visitor, NestedVisitorMap};
@@ -179,7 +179,7 @@ pub struct RegionCtxt<'a, 'gcx: 'a+'tcx, 'tcx: 'a> {
 
     region_bound_pairs: Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>,
 
-    pub region_scope_tree: Rc<region::ScopeTree>,
+    pub region_scope_tree: Arc<region::ScopeTree>,
 
     free_region_map: FreeRegionMap<'tcx>,
 

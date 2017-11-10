@@ -212,6 +212,11 @@ pub struct Path {
 }
 
 impl Path {
+    #[allow(dead_code)]
+    fn dummy() {
+        ::rustc_data_structures::lock::assert_sync::<Self>();
+    }
+
     pub fn is_global(&self) -> bool {
         !self.segments.is_empty() && self.segments[0].name == keywords::CrateRoot.name()
     }
@@ -1049,7 +1054,14 @@ pub struct Expr {
     pub attrs: ThinVec<Attribute>,
     pub hir_id: HirId,
 }
-
+/*
+impl Expr {
+    #[allow(dead_code)]
+    fn dummy() {
+        ::rustc_data_structures::lock::assert_sync::<Self>();
+    }
+}
+*/
 impl fmt::Debug for Expr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "expr({}: {})", self.id,

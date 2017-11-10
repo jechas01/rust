@@ -187,7 +187,7 @@ mod rustc_trans {
 // The FileLoader provides a way to load files from sources other than the file system.
 pub fn run_compiler<'a>(args: &[String],
                         callbacks: &mut CompilerCalls<'a>,
-                        file_loader: Option<Box<FileLoader + 'static>>,
+                        file_loader: Option<Box<FileLoader + Send + Sync + 'static>>,
                         emitter_dest: Option<Box<Write + Send>>)
                         -> (CompileResult, Option<Session>)
 {
@@ -230,7 +230,7 @@ pub fn run_compiler<'a>(args: &[String],
     let cstore = Rc::new(CStore::new(DefaultTransCrate::metadata_loader()));
 
     let loader = file_loader.unwrap_or(box RealFileLoader);
-    let codemap = Rc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
+    let codemap = Arc::new(CodeMap::with_file_loader(loader, sopts.file_path_mapping()));
     let mut sess = session::build_session_with_codemap(
         sopts, input_file_path, descriptions, codemap, emitter_dest,
     );
@@ -577,7 +577,6 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                                      &state.expanded_crate.take().unwrap(),
                                                      state.crate_name.unwrap(),
                                                      ppm,
-                                                     state.arena.unwrap(),
                                                      state.arenas.unwrap(),
                                                      state.output_filenames.unwrap(),
                                                      opt_uii.clone(),

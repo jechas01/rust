@@ -20,7 +20,7 @@ use styled_buffer::StyledBuffer;
 use std::borrow::Cow;
 use std::io::prelude::*;
 use std::io;
-use std::rc::Rc;
+use std::sync::Arc;
 use term;
 use std::collections::HashMap;
 use std::cmp::min;
@@ -106,19 +106,19 @@ impl ColorConfig {
 
 pub struct EmitterWriter {
     dst: Destination,
-    cm: Option<Rc<CodeMapper>>,
+    cm: Option<Arc<CodeMapper + Send + Sync>>,
     short_message: bool,
 }
 
 struct FileWithAnnotatedLines {
-    file: Rc<FileMap>,
+    file: Arc<FileMap>,
     lines: Vec<Line>,
     multiline_depth: usize,
 }
 
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
-                  code_map: Option<Rc<CodeMapper>>,
+                  code_map: Option<Arc<CodeMapper + Send + Sync>>,
                   short_message: bool)
                   -> EmitterWriter {
         if color_config.use_color() {
@@ -138,7 +138,7 @@ impl EmitterWriter {
     }
 
     pub fn new(dst: Box<Write + Send>,
-               code_map: Option<Rc<CodeMapper>>,
+               code_map: Option<Arc<CodeMapper + Send + Sync>>,
                short_message: bool)
                -> EmitterWriter {
         EmitterWriter {
@@ -150,7 +150,7 @@ impl EmitterWriter {
 
     fn preprocess_annotations(&mut self, msp: &MultiSpan) -> Vec<FileWithAnnotatedLines> {
         fn add_annotation_to_file(file_vec: &mut Vec<FileWithAnnotatedLines>,
-                                  file: Rc<FileMap>,
+                                  file: Arc<FileMap>,
                                   line_index: usize,
                                   ann: Annotation) {
 
@@ -282,7 +282,7 @@ impl EmitterWriter {
 
     fn render_source_line(&self,
                           buffer: &mut StyledBuffer,
-                          file: Rc<FileMap>,
+                          file: Arc<FileMap>,
                           line: &Line,
                           width_offset: usize,
                           code_offset: usize) -> Vec<(usize, Style)> {

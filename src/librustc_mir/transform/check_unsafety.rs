@@ -22,7 +22,7 @@ use rustc::mir::visit::{LvalueContext, Visitor};
 
 use syntax::ast;
 
-use std::rc::Rc;
+use std::sync::Arc;
 
 
 pub struct UnsafetyChecker<'a, 'tcx: 'a> {
@@ -310,8 +310,8 @@ fn unsafety_check_result<'a, 'tcx>(tcx: TyCtxt<'a, 'tcx, 'tcx>, def_id: DefId)
         ClearOnDecode::Clear => {
             debug!("unsafety_violations: {:?} - remote, skipping", def_id);
             return UnsafetyCheckResult {
-                violations: Rc::new([]),
-                unsafe_blocks: Rc::new([])
+                violations: Arc::new([]),
+                unsafe_blocks: Arc::new([])
             }
         }
     };

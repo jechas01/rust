@@ -41,6 +41,8 @@ extern crate log;
 extern crate serialize as rustc_serialize; // used by deriving
 #[cfg(unix)]
 extern crate libc;
+extern crate parking_lot;
+extern crate owning_ref;
 
 pub use rustc_serialize::hex::ToHex;
 
@@ -66,6 +68,7 @@ pub mod tuple_slice;
 pub mod veccell;
 pub mod control_flow_graph;
 pub mod flock;
+pub mod lock;
 
 // See comments in src/librustc/lib.rs
 #[doc(hidden)]

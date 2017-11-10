@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::rc::Rc;
 use std::sync::Arc;
 
 use base;
@@ -63,7 +62,7 @@ pub fn crates_export_threshold(crate_types: &[config::CrateType])
 pub fn provide_local(providers: &mut Providers) {
     providers.exported_symbol_ids = |tcx, cnum| {
         let export_threshold = threshold(tcx);
-        Rc::new(tcx.exported_symbols(cnum)
+        Arc::new(tcx.exported_symbols(cnum)
             .iter()
             .filter_map(|&(_, id, level)| {
                 id.and_then(|id| {

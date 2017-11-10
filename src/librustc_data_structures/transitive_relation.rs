@@ -10,16 +10,16 @@
 
 use bitvec::BitMatrix;
 use fx::FxHashMap;
+use lock::LockCell;
 use rustc_serialize::{Encodable, Encoder, Decodable, Decoder};
 use stable_hasher::{HashStable, StableHasher, StableHasherResult};
-use std::cell::RefCell;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::mem;
 
 
-#[derive(Clone, Debug)]
-pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash + Clone> {
+#[derive(Debug)]
+pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash> {
     // List of elements. This is used to map from a T to a usize.
     elements: Vec<T>,
 
@@ -32,14 +32,33 @@ pub struct TransitiveRelation<T: Clone + Debug + Eq + Hash + Clone> {
 
     // This is a cached transitive closure derived from the edges.
     // Currently, we build it lazilly and just throw out any existing
-    // copy whenever a new edge is added. (The RefCell is to permit
+    // copy whenever a new edge is added. (The LockCell is to permit
     // the lazy computation.) This is kind of silly, except for the
     // fact its size is tied to `self.elements.len()`, so I wanted to
     // wait before building it up to avoid reallocating as new edges
     // are added with new elements. Perhaps better would be to ask the
     // user for a batch of edges to minimize this effect, but I
     // already wrote the code this way. :P -nmatsakis
-    closure: RefCell<Option<BitMatrix>>,
+    closure: LockCell<Option<BitMatrix>>,
+}
+
+impl<T: Clone + Debug + Eq + Hash> Clone for TransitiveRelation<T> {
+    fn clone(&self) -> Self {
+        TransitiveRelation {
+            elements: self.elements.clone(),
+            map: self.map.clone(),
+            edges: self.edges.clone(),
+            closure: {
+                // Borrow the closure for the duration of the clone.
+                // This could cause the closure to be recomputed if there's
+                // an operation which require the closure during the clone
+                let closure = self.closure.take();
+                let new_closure = closure.clone();
+                self.closure.set(closure);
+                LockCell::new(new_closure)
+            },
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, RustcEncodable, RustcDecodable, Debug)]
@@ -51,13 +70,13 @@ struct Edge {
     target: Index,
 }
 
-impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
+impl<T: Clone + Debug + Eq + Hash> TransitiveRelation<T> {
     pub fn new() -> TransitiveRelation<T> {
         TransitiveRelation {
             elements: vec![],
             map: FxHashMap(),
             edges: vec![],
-            closure: RefCell::new(None),
+            closure: LockCell::new(None),
         }
     }
 
@@ -72,7 +91,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
     fn add_index(&mut self, a: T) -> Index {
         let &mut TransitiveRelation {
             ref mut elements,
-            ref closure,
+            ref mut closure,
             ref mut map,
             ..
         } = self;
@@ -82,7 +101,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
                elements.push(a);
 
                // if we changed the dimensions, clear the cache
-               *closure.borrow_mut() = None;
+               closure.set_mut(None);
 
                Index(elements.len() - 1)
            })
@@ -122,7 +141,7 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
             self.edges.push(edge);
 
             // added an edge, clear the cache
-            *self.closure.borrow_mut() = None;
+            self.closure.set_mut(None);
         }
     }
 
@@ -293,13 +312,14 @@ impl<T: Clone + Debug + Eq + Hash + Clone> TransitiveRelation<T> {
     fn with_closure<OP, R>(&self, op: OP) -> R
         where OP: FnOnce(&BitMatrix) -> R
     {
-        let mut closure_cell = self.closure.borrow_mut();
-        let mut closure = closure_cell.take();
+        let mut closure = self.closure.take();
         if closure.is_none() {
             closure = Some(self.compute_closure());
         }
         let result = op(closure.as_ref().unwrap());
-        *closure_cell = closure;
+        // This is thread-safe. The closure we restore cannot be outdated since
+        // only mutable references modify the relation
+        self.closure.set(closure);
         result
     }
 
@@ -380,7 +400,7 @@ impl<T> Decodable for TransitiveRelation<T>
                               .enumerate()
                               .map(|(index, elem)| (elem.clone(), Index(index)))
                               .collect();
-            Ok(TransitiveRelation { elements, edges, map, closure: RefCell::new(None) })
+            Ok(TransitiveRelation { elements, edges, map, closure: LockCell::new(None) })
         })
     }
 }

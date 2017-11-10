@@ -43,7 +43,7 @@ pub mod deriving;
 
 pub mod proc_macro_impl;
 
-use std::rc::Rc;
+use std::sync::Arc;
 use syntax::ast;
 use syntax::ext::base::{MacroExpanderFn, NormalTT, NamedSyntaxExtension};
 use syntax::symbol::Symbol;
@@ -54,7 +54,7 @@ pub fn register_builtins(resolver: &mut syntax::ext::base::Resolver,
     deriving::register_builtin_derives(resolver);
 
     let mut register = |name, ext| {
-        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Rc::new(ext));
+        resolver.add_builtin(ast::Ident::with_empty_ctxt(name), Arc::new(ext));
     };
 
     macro_rules! register {

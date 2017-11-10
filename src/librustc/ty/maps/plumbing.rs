@@ -20,7 +20,6 @@ use ty::maps::config::QueryDescription;
 use ty::item_path;
 
 use rustc_data_structures::fx::{FxHashMap};
-use std::cell::RefMut;
 use std::marker::PhantomData;
 use std::mem;
 use syntax_pos::Span;
@@ -55,9 +54,9 @@ impl<M: QueryDescription> QueryMap<M> {
     }
 }
 
-pub(super) struct CycleError<'a, 'tcx: 'a> {
+pub(super) struct CycleError<'tcx> {
     span: Span,
-    cycle: RefMut<'a, [(Span, Query<'tcx>)]>,
+    cycle: Vec<(Span, Query<'tcx>)>,
 }
 
 impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
@@ -97,7 +96,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
     }
 
     pub(super) fn cycle_check<F, R>(self, span: Span, query: Query<'gcx>, compute: F)
-                                    -> Result<R, CycleError<'a, 'gcx>>
+                                    -> Result<R, CycleError<'gcx>>
         where F: FnOnce() -> R
     {
         {
@@ -106,7 +105,7 @@ impl<'a, 'gcx, 'tcx> TyCtxt<'a, 'gcx, 'tcx> {
                                        .find(|&(_, &(_, ref q))| *q == query) {
                 return Err(CycleError {
                     span,
-                    cycle: RefMut::map(stack, |stack| &mut stack[i..])
+                    cycle: stack[i..].iter().cloned().collect(),
                 });
             }
             stack.push((span, query));
@@ -183,7 +182,7 @@ macro_rules! define_maps {
        [$($modifiers:tt)*] fn $name:ident: $node:ident($K:ty) -> $V:ty,)*) => {
 
         use dep_graph::DepNodeIndex;
-        use std::cell::RefCell;
+        use rustc_data_structures::lock::Lock;
 
         define_map_struct! {
             tcx: $tcx,
@@ -195,8 +194,8 @@ macro_rules! define_maps {
                        -> Self {
                 Maps {
                     providers,
-                    query_stack: RefCell::new(vec![]),
-                    $($name: RefCell::new(QueryMap::new())),*
+                    query_stack: Lock::new(vec![]),
+                    $($name: Lock::new(QueryMap::new())),*
                 }
             }
         }
@@ -254,7 +253,7 @@ macro_rules! define_maps {
             fn try_get_with(tcx: TyCtxt<'a, $tcx, 'lcx>,
                             mut span: Span,
                             key: $K)
-                            -> Result<$V, CycleError<'a, $tcx>>
+                            -> Result<$V, CycleError<$tcx>>
             {
                 debug!("ty::queries::{}::try_get_with(key={:?}, span={:?})",
                        stringify!($name),
@@ -375,7 +374,7 @@ macro_rules! define_maps {
                                                   span: Span,
                                                   dep_node_index: DepNodeIndex,
                                                   dep_node: &DepNode)
-                                                  -> Result<$V, CycleError<'a, $tcx>>
+                                                  -> Result<$V, CycleError<$tcx>>
             {
                 debug_assert!(tcx.dep_graph.is_green(dep_node_index));
 
@@ -437,7 +436,7 @@ macro_rules! define_maps {
                      key: $K,
                      span: Span,
                      dep_node: DepNode)
-                     -> Result<($V, DepNodeIndex), CycleError<'a, $tcx>> {
+                     -> Result<($V, DepNodeIndex), CycleError<$tcx>> {
                 debug_assert!(tcx.dep_graph.node_color(&dep_node).is_none());
 
                 profq_msg!(tcx, ProfileQueriesMsg::ProviderBegin);
@@ -546,8 +545,8 @@ macro_rules! define_map_struct {
      input: ($(([$(modifiers:tt)*] [$($attr:tt)*] [$name:ident]))*)) => {
         pub struct Maps<$tcx> {
             providers: IndexVec<CrateNum, Providers<$tcx>>,
-            query_stack: RefCell<Vec<(Span, Query<$tcx>)>>,
-            $($(#[$attr])*  $name: RefCell<QueryMap<queries::$name<$tcx>>>,)*
+            query_stack: Lock<Vec<(Span, Query<$tcx>)>>,
+            $($(#[$attr])*  $name: Lock<QueryMap<queries::$name<$tcx>>>,)*
         }
     };
 }
