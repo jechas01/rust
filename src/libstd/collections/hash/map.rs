@@ -1372,9 +1372,48 @@ impl<'a, K, V> Clone for Iter<'a, K, V> {
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K: Debug, V: Debug> fmt::Debug for Iter<'a, K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_list()
-            .entries(self.clone())
-            .finish()
+        f.debug_list().entries(self.clone()).finish()
+    }
+}
+
+impl<'a, K: 'a, V: 'a> Iter<'a, K, V> {
+    /// TODO
+    #[unstable(feature = "hashmap_itercloned", issue = "0")]
+    pub fn cloned(self) -> IterCloned<'a, K, V>
+    where
+        K: Clone,
+        V: Clone,
+    {
+        IterCloned { inner: self }
+    }
+}
+
+/// An iterator over cloned entries of a `HashMap`.
+///
+/// This struct is created by [`cloned`] method on [`Iter`] or [`IterMut`]. See
+/// its doecumentation for more.
+///
+/// [`cloned`]: struct.Iter.html#method.cloned
+/// [`Iter`]: struct.Iter.html
+/// [`IterMut`]: struct.IterMut.html
+#[unstable(feature = "hashmap_itercloned", issue = "0")]
+pub struct IterCloned<'a, K: 'a, V: 'a> {
+    inner: Iter<'a, K, V>,
+}
+
+#[unstable(feature = "hashmap_itercloned", issue = "0")]
+impl<'a, K, V> Clone for IterCloned<'a, K, V> {
+    fn clone(&self) -> IterCloned<'a, K, V> {
+        IterCloned {
+            inner: self.inner.clone(),
+        }
+    }
+}
+
+#[unstable(feature = "hashmap_itercloned", issue = "0")]
+impl<'a, K: Debug + Clone, V: Debug + Clone> fmt::Debug for IterCloned<'a, K, V> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_list().entries(self.clone()).finish()
     }
 }
 
@@ -1713,6 +1752,35 @@ impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
 }
 #[unstable(feature = "fused", issue = "35602")]
 impl<'a, K, V> FusedIterator for IterMut<'a, K, V> {}
+
+#[unstable(feature = "hashmap_itercloned", issue = "0")]
+impl<'a, K, V> Iterator for IterCloned<'a, K, V>
+where
+    K: Clone,
+    V: Clone,
+{
+    type Item = (K, V);
+
+    #[inline]
+    fn next(&mut self) -> Option<(K, V)> {
+        self.inner.next().map(|(k, v)| (k.clone(), v.clone()))
+    }
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.inner.size_hint()
+    }
+}
+#[unstable(feature = "hashmap_itercloned", issue = "0")]
+impl<'a, K, V> ExactSizeIterator for IterCloned<'a, K, V>
+where
+    K: Clone,
+    V: Clone,
+{
+    #[inline]
+    fn len(&self) -> usize {
+        self.inner.len()
+    }
+}
 
 #[stable(feature = "std_debug", since = "1.16.0")]
 impl<'a, K, V> fmt::Debug for IterMut<'a, K, V>
