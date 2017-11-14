@@ -23,7 +23,7 @@ use rustc::util::nodemap::DefIdSet;
 use syntax::ast;
 use syntax_pos::Span;
 use std::mem;
-use std::rc::Rc;
+use std::sync::Arc;
 
 ///////////////////////////////////////////////////////////////////////////
 // Entry point
@@ -50,7 +50,7 @@ impl<'a, 'gcx, 'tcx> FnCtxt<'a, 'gcx, 'tcx> {
         wbcx.visit_generator_interiors();
 
         let used_trait_imports = mem::replace(&mut self.tables.borrow_mut().used_trait_imports,
-                                              Rc::new(DefIdSet()));
+                                              Arc::new(DefIdSet()));
         debug!("used_trait_imports({:?}) = {:?}", item_def_id, used_trait_imports);
         wbcx.tables.used_trait_imports = used_trait_imports;
 

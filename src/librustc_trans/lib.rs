@@ -72,8 +72,8 @@ pub use llvm_util::{init, target_features, print_version, print_passes, print, e
 
 use std::any::Any;
 use std::path::PathBuf;
-use std::rc::Rc;
 use std::sync::mpsc;
+use std::sync::Arc;
 
 use rustc::dep_graph::DepGraph;
 use rustc::hir::def_id::CrateNum;
@@ -322,11 +322,11 @@ pub struct CrateInfo {
     profiler_runtime: Option<CrateNum>,
     sanitizer_runtime: Option<CrateNum>,
     is_no_builtins: FxHashSet<CrateNum>,
-    native_libraries: FxHashMap<CrateNum, Rc<Vec<NativeLibrary>>>,
+    native_libraries: FxHashMap<CrateNum, Arc<Vec<NativeLibrary>>>,
     crate_name: FxHashMap<CrateNum, String>,
-    used_libraries: Rc<Vec<NativeLibrary>>,
-    link_args: Rc<Vec<String>>,
-    used_crate_source: FxHashMap<CrateNum, Rc<CrateSource>>,
+    used_libraries: Arc<Vec<NativeLibrary>>,
+    link_args: Arc<Vec<String>>,
+    used_crate_source: FxHashMap<CrateNum, Arc<CrateSource>>,
     used_crates_static: Vec<(CrateNum, LibSource)>,
     used_crates_dynamic: Vec<(CrateNum, LibSource)>,
 }

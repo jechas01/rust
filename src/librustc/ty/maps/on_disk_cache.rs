@@ -16,11 +16,12 @@ use rustc_serialize::{Decodable, Decoder, Encodable, Encoder, opaque,
                       SpecializedDecoder};
 use session::Session;
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::mem;
 use syntax::codemap::{CodeMap, StableFilemapId};
 use syntax_pos::{BytePos, Span, NO_EXPANSION, DUMMY_SP};
+use rustc_data_structures::lock::Lock;
+//use util::common::assert_sync;
 
 /// `OnDiskCache` provides an interface to incr. comp. data cached from the
 /// previous compilation session. This data will eventually include the results
@@ -32,7 +33,7 @@ pub struct OnDiskCache<'sess> {
 
     // This field collects all Diagnostics emitted during the current
     // compilation session.
-    current_diagnostics: RefCell<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
+    current_diagnostics: Lock<FxHashMap<DepNodeIndex, Vec<Diagnostic>>>,
 
     // This will eventually be needed for creating Decoders that can rebase
     // spans.
@@ -78,16 +79,17 @@ impl<'sess> OnDiskCache<'sess> {
             prev_diagnostics,
             _prev_filemap_starts: header.prev_filemap_starts,
             codemap: sess.codemap(),
-            current_diagnostics: RefCell::new(FxHashMap()),
+            current_diagnostics: Lock::new(FxHashMap()),
         }
     }
 
     pub fn new_empty(codemap: &'sess CodeMap) -> OnDiskCache<'sess> {
+        //assert_sync::<Self>();
         OnDiskCache {
             prev_diagnostics: FxHashMap(),
             _prev_filemap_starts: BTreeMap::new(),
             codemap,
-            current_diagnostics: RefCell::new(FxHashMap()),
+            current_diagnostics: Lock::new(FxHashMap()),
         }
     }
 

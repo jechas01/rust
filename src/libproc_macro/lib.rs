@@ -50,7 +50,7 @@ mod diagnostic;
 pub use diagnostic::{Diagnostic, Level};
 
 use std::{ascii, fmt, iter};
-use std::rc::Rc;
+use std::sync::Arc;
 use std::str::FromStr;
 
 use syntax::ast;
@@ -274,7 +274,7 @@ pub struct LineColumn {
 #[unstable(feature = "proc_macro", issue = "38356")]
 #[derive(Clone)]
 pub struct SourceFile {
-    filemap: Rc<FileMap>,
+    filemap: Arc<FileMap>,
 }
 
 impl SourceFile {
@@ -324,7 +324,7 @@ impl fmt::Debug for SourceFile {
 #[unstable(feature = "proc_macro", issue = "38356")]
 impl PartialEq for SourceFile {
     fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.filemap, &other.filemap)
+        Arc::ptr_eq(&self.filemap, &other.filemap)
     }
 }
 

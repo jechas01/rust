@@ -10,6 +10,8 @@
 
 #![allow(non_camel_case_types)]
 
+use rustc_data_structures::lock::LockCell;
+
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
 use std::ffi::CString;
@@ -23,6 +25,8 @@ use std::sync::mpsc::{Sender};
 use syntax_pos::{SpanData};
 use ty::maps::{QueryMsg};
 use dep_graph::{DepNode};
+
+pub fn assert_sync<T: ?Sized + Sync>() {}
 
 // The name of the associated type for `Fn` return types
 pub const FN_OUTPUT_NAME: &'static str = "Output";
@@ -205,7 +209,7 @@ pub fn to_readable_str(mut val: usize) -> String {
     groups.join("_")
 }
 
-pub fn record_time<T, F>(accu: &Cell<Duration>, f: F) -> T where
+pub fn record_time<T, F>(accu: &LockCell<Duration>, f: F) -> T where
     F: FnOnce() -> T,
 {
     let start = Instant::now();
